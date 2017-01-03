@@ -1,0 +1,58 @@
+#! /bin/sh
+#
+# Script to device uptime from Observium database.
+# E-Know.net - July 2013
+
+
+# Usage:
+
+if [ $# -ne 2 ]
+then
+	echo "Usage:  $0 <hostname> <warn-level> \n warn level = time in minutes under which a warning is generated" 
+	exit 3
+fi
+
+
+# Variables:
+
+HOSTNAME=$1
+WARN=$2
+OBSERVIUM_CONFIG=/opt/observium/config.php
+DB_USER=`fgrep db_user $OBSERVIUM_CONFIG | awk '{print substr($3,2,length($3)-3)}'`
+DB_PASS=`fgrep db_pass $OBSERVIUM_CONFIG | awk '{print substr($3,2,length($3)-3)}'`
+DB_NAME=`fgrep db_name $OBSERVIUM_CONFIG | awk '{print substr($3,2,length($3)-3)}'`
+DB_HOST=`fgrep db_host $OBSERVIUM_CONFIG | awk '{print substr($3,2,length($3)-3)}'`
+
+
+# Query Database for Device ID:
+
+mysql -u $DB_USER -p$DB_PASS -D $DB_NAME -h $DB_HOST -NBe "select uptime from devices where hostname = '$HOSTNAME';" | {
+	while read i; do
+		uptimesec=`echo $i | awk '{print $1}'`
+
+		if [ "$uptimesec" = "" ]
+		then
+			echo "UNKNOWN - Hostname" 
+			exit 3
+		fi
+	done
+
+		uptimemin=`expr $uptimesec / 60`
+
+	# Return icinga/nagios results:
+
+	if [ "$uptimemin" = "" ] 
+	then
+		echo no data
+		exit 3
+	fi
+
+	if [ $uptimemin -le $WARN ] 
+	then
+		echo "uptime WARNING - device reboot $uptimemin minutes ago"
+		exit 1
+	fi
+
+	echo "uptime OK"
+	exit 0
+}
