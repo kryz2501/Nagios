@@ -1,2 +1,2 @@
 # Nagios
-Random/Icinga Nagios scripts
+Random Icinga/Nagios scripts
