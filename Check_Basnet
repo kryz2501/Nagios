@@ -1,0 +1,46 @@
+#! /bin/sh
+#
+# Script to check  if the bacnet router is working
+# Chris Edwards - Nasstar - Dec 2016
+
+
+# Usage:
+
+if [ $# -ne 3 ]
+then
+        echo "Usage:  $0 <hostname> <user> <pass>"
+	echo ""
+	echo "script to pull the diagnostics from basnet router, only tested with release 1.2.7"
+	echo "other results may vary"
+        exit 3
+fi
+
+
+# Variables:
+
+hostname=$1
+user=$2
+pass=$3
+tmpfile=/tmp/bacnet-diag-$hostname.tmp
+#get the diag output
+
+rm  $tmpfile > /dev/null 2>&1
+wget --user=$user --password=$pass http://$hostname/cgi-bin/diagnostic.cgi -O $tmpfile > /dev/null 2>&1
+
+
+now=`sed '5q;d' $tmpfile | awk '{print $4}' | sed 's/.\{2\}$//'` > /dev/null 2>&1
+
+# check if we have current data pasage
+
+results=`fgrep $now  $tmpfile | fgrep bas-rt`
+
+       # Return icinga/nagios results:
+
+        if [ -z "$results" ] 
+	        then
+ 	               echo " Bacnet Warning - $now - No current log data system may need to be restarted"
+       		         exit 1
+        	fi
+
+        echo "Bacnet OK - $now Logs show current traffic"
+        exit 0
