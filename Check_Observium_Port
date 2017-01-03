@@ -1,0 +1,65 @@
+#! /bin/sh
+#
+# Script to check interface throughput from Observium database.
+# E-Know.net - Feb 2013
+
+
+# Usage:
+
+if [ $# -ne 3 ]
+then
+	echo "Usage:  $0 <port_id> <warn Kbps> <crit Kbps>"
+	exit 3
+fi
+
+
+# Variables:
+
+PORT_ID=$1
+WARN=$2
+CRIT=$3
+OBSERVIUM_CONFIG=/opt/observium/config.php
+DB_USER=`fgrep db_user /opt/observium/config.php | awk -F\" '{print $2}'`
+DB_PASS=`fgrep db_pass /opt/observium/config.php | awk -F\" '{print $2}'`
+DB_NAME=`fgrep db_name /opt/observium/config.php | awk -F\" '{print $2}'`
+
+
+# Query Database:
+
+mysql -u $DB_USER -p$DB_PASS -D $DB_NAME -NBe "SELECT ifInOctets_rate, ifOutOctets_rate FROM \`ports-state\` where port_id=$PORT_ID;" | {
+	while read i; do
+		InBps=`echo $i | awk '{print $1}'`
+		OutBps=`echo $i | awk '{print $2}'`
+
+		if [ "$InBps" = "NULL" ] || [ "$OutBps" = "NULL" ]
+		then
+			exit 3
+		fi
+
+		InKbps=`expr $InBps \* 8 / 1000`
+		OutKbps=`expr $OutBps \* 8 / 1000`
+	done
+
+
+	# Return icinga/nagios results:
+
+	if [ "$InBps" = "" ] || [ "$OutBps" = "" ]
+	then
+		exit 3
+	fi
+
+	if [ $InKbps -ge $CRIT ] || [ $OutKbps -ge $CRIT ]
+	then
+		echo "Port CRITICAL - InKbps: $InKbps, OutKbps: $OutKbps"
+		exit 2
+	fi
+
+	if [ $InKbps -ge $WARN ] || [ $OutKbps -ge $WARN ]
+	then
+		echo "Port WARNING - InKbps: $InKbps, OutKbps: $OutKbps"
+		exit 1
+	fi
+
+	echo "Port OK - InKbps: $InKbps, OutKbps: $OutKbps"
+	exit 0
+}
