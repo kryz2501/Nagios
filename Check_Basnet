@@ -3,25 +3,28 @@
 # Script to check  if the bacnet router is working
 # Chris Edwards - Nasstar - Dec 2016
 
+OPTIND=1         # Reset in case getopts has been used previously in the shell.
 
-# Usage:
+while getopts "h?:H:U:P:" opt; do
+    case "$opt" in
+    h|\?)
+        echo "   Check basnet usage:"
+        echo "           -H <hostname> -U username -P password"         
+        exit 0
+        ;;
+    H)  hostname=$OPTARG;;
+    U)  user=$OPTARG;;
+    P)  pass=$OPTARG;;
+    esac
+done
 
-if [ $# -ne 3 ]
-then
-        echo "Usage:  $0 <hostname> <user> <pass>"
-	echo ""
-	echo "script to pull the diagnostics from basnet router, only tested with release 1.2.7"
-	echo "other results may vary"
-        exit 3
-fi
+shift $((OPTIND-1))
 
+[ "$1" = "--" ] && shift
 
 # Variables:
-
-hostname=$1
-user=$2
-pass=$3
 tmpfile=/tmp/bacnet-diag-$hostname.tmp
+
 #get the diag output
 
 rm  $tmpfile > /dev/null 2>&1
